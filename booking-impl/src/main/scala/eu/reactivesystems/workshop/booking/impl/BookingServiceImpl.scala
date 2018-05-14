@@ -18,15 +18,13 @@ class BookingServiceImpl(persistentEntityRegistry: PersistentEntityRegistry)(
   private def entityRef(roomId: UUID) =
     persistentEntityRegistry.refFor[BookingRegister](roomId.toString)
 
-  override def requestBooking(roomId: UUID): ServiceCall[BookingRequest, UUID] = request => Future.successful(UUID.randomUUID())
+  override def requestBooking(roomId: UUID): ServiceCall[BookingRequest, UUID] = request => entityRef(roomId).ask(RequestBooking(request))
 
+  override def cancelBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+  override def rejectBooking(roomId: UUID, bookingId: UUID): ServiceCall[BookingRequest, Done] = request => Future.successful(Done)
   override def withdrawBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
 
   override def confirmBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
-
-  override def rejectBooking(roomId: UUID, bookingId: UUID): ServiceCall[BookingRequest, Done] = request => Future.successful(Done)
-
-  override def cancelBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
 
   override def modifyBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
 

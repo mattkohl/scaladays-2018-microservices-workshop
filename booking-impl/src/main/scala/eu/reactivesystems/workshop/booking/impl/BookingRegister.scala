@@ -1,5 +1,9 @@
 package eu.reactivesystems.workshop.booking.impl
 
+import java.util.UUID
+
+import akka.Done
+import com.lightbend.lagom.scaladsl.persistence.PersistentEntity.ReplyType
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AggregateEventTagger, PersistentEntity}
 import eu.reactivesystems.workshop.booking.api.BookingRequest
 import eu.reactivesystems.workshop.jsonformats.JsonFormats._
@@ -17,13 +21,16 @@ class BookingRegister extends PersistentEntity {
 
 
   override def behavior: Behavior = {
-    case BookingRegisterState(BookingRegisterStatus.NotCreated) => notCreated
+    case BookingRegisterState(BookingRegisterStatus.NotCreated) => unlisted
   }
 
   /**
     * Behavior for the not created state.
     */
-  private def notCreated = Actions.empty
+  private def unlisted = Actions().onCommand[ListRoom.type, Done] {
+    case (RequestBooking(bookingRequest), ctx, state) =>
+      ctx.thenPersist(RoomListed)(event => ctx.reply(Done))
+  }
 
 }
 
@@ -52,23 +59,26 @@ object BookingRegisterStatus extends Enumeration {
   */
 sealed trait BookingRegisterCommand
 
-case class RequestBooking(request: BookingRequest) extends BookingRegisterCommand
-case object WithdrawBooking extends BookingRegisterCommand
-case object ConfirmBooking extends BookingRegisterCommand
-case class RejectBooking(request: BookingRequest) extends BookingRegisterCommand
-case object CancelBooking extends BookingRegisterCommand
-case object ModifyBooking extends BookingRegisterCommand
-case object ListRoom extends BookingRegisterCommand
-case object UnlistRoom extends BookingRegisterCommand
+case class RequestBooking(request: BookingRequest) extends BookingRegisterCommand with ReplyType[UUID]
+
+case class CancelBooking(bookingId: UUID) extends BookingRegisterCommand with ReplyType[Done]
+case class WithdrawBooking(bookingId: UUID) extends BookingRegisterCommand with ReplyType[Done]
+case class RejectBooking(bookingId: UUID) extends BookingRegisterCommand with ReplyType[Done]
+
+case object ListRoom extends BookingRegisterCommand with ReplyType[Done]
+case object UnlistRoom extends BookingRegisterCommand with ReplyType[Done]
 
 
 /**
   * A persisted event.
   */
-trait BookingRegisterEvent extends AggregateEvent[BookingRegisterEvent] {
+sealed trait BookingRegisterEvent extends AggregateEvent[BookingRegisterEvent] {
   override def aggregateTag: AggregateEventTagger[BookingRegisterEvent] = BookingRegisterEvent.Tag
 }
+
+case object RoomListed extends BookingRegisterEvent
 
 object BookingRegisterEvent {
   val Tag = AggregateEventTag[BookingRegisterEvent]
 }
+
