@@ -2,10 +2,10 @@ package eu.reactivesystems.workshop.booking.impl
 
 import java.util.UUID
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.lightbend.lagom.scaladsl.persistence.PersistentEntityRegistry
-import eu.reactivesystems.workshop.booking.api.BookingService
+import eu.reactivesystems.workshop.booking.api.{BookingRequest, BookingService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -13,10 +13,25 @@ class BookingServiceImpl(persistentEntityRegistry: PersistentEntityRegistry)(
     implicit ec: ExecutionContext)
     extends BookingService {
 
-  override def healthCheck(): ServiceCall[NotUsed, String] =
-    request => Future.successful("OK")
+  override def healthCheck(): ServiceCall[NotUsed, String] = request => Future.successful("OK")
 
-  private def entityRef(listingId: UUID) =
-    persistentEntityRegistry.refFor[BookingRegister](listingId.toString)
+  private def entityRef(roomId: UUID) =
+    persistentEntityRegistry.refFor[BookingRegister](roomId.toString)
+
+  override def requestBooking(roomId: UUID): ServiceCall[BookingRequest, UUID] = request => Future.successful(UUID.randomUUID())
+
+  override def withdrawBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+
+  override def confirmBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+
+  override def rejectBooking(roomId: UUID, bookingId: UUID): ServiceCall[BookingRequest, Done] = request => Future.successful(Done)
+
+  override def cancelBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+
+  override def modifyBooking(roomId: UUID, bookingId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+
+  override def listRoom(roomId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
+
+  override def unlistRoom(roomId: UUID): ServiceCall[NotUsed, Done] = request => Future.successful(Done)
 
 }

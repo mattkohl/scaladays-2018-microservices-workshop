@@ -1,6 +1,7 @@
 package eu.reactivesystems.workshop.booking.impl
 
 import com.lightbend.lagom.scaladsl.persistence.{AggregateEvent, AggregateEventTag, AggregateEventTagger, PersistentEntity}
+import eu.reactivesystems.workshop.booking.api.BookingRequest
 import eu.reactivesystems.workshop.jsonformats.JsonFormats._
 import play.api.libs.json.{Format, Json}
 
@@ -49,7 +50,16 @@ object BookingRegisterStatus extends Enumeration {
 /**
   * A command.
   */
-trait BookingRegisterCommand
+sealed trait BookingRegisterCommand
+
+case class RequestBooking(request: BookingRequest) extends BookingRegisterCommand
+case object WithdrawBooking extends BookingRegisterCommand
+case object ConfirmBooking extends BookingRegisterCommand
+case class RejectBooking(request: BookingRequest) extends BookingRegisterCommand
+case object CancelBooking extends BookingRegisterCommand
+case object ModifyBooking extends BookingRegisterCommand
+case object ListRoom extends BookingRegisterCommand
+case object UnlistRoom extends BookingRegisterCommand
 
 
 /**

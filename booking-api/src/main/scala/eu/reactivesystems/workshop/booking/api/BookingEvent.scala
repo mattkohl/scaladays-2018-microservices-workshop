@@ -9,17 +9,15 @@ import play.api.libs.json._
   * A bid event.
   */
 sealed trait BookingEvent {
-  val listingId: UUID
+  val roomId: UUID
 }
 
-case class BookingCreated(listingId: UUID) extends BookingEvent
+case class BookingCreated(roomId: UUID) extends BookingEvent
 
 object BookingCreated {
   implicit val format: Format[BookingCreated] = Json.format
-
 }
 
 object BookingEvent {
-  implicit val format: Format[BookingEvent] =
-    derived.flat.oformat((__ \ "type").format[String])
+  implicit val format: Format[BookingEvent] = derived.flat.oformat((__ \ "type").format[String])
 }
