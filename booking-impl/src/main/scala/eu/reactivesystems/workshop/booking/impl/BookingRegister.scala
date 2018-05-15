@@ -94,8 +94,30 @@ case class CancelBooking(bookingId: UUID) extends BookingRegisterCommand with Re
 case class WithdrawBooking(bookingId: UUID) extends BookingRegisterCommand with ReplyType[Done]
 case class RejectBooking(bookingId: UUID) extends BookingRegisterCommand with ReplyType[Done]
 
-case object ListRoom extends BookingRegisterCommand with ReplyType[Done]
-case object UnlistRoom extends BookingRegisterCommand with ReplyType[Done]
+case object ListRoom extends BookingRegisterCommand with ReplyType[Done] {
+  implicit val format: Format[ListRoom.type] = singletonFormat(ListRoom)
+}
+
+case object UnlistRoom extends BookingRegisterCommand with ReplyType[Done] {
+  implicit val format: Format[UnlistRoom.type] = singletonFormat(UnlistRoom)
+}
+
+
+object RequestBooking {
+  implicit val format: Format[RequestBooking] = Json.format
+}
+
+object CancelBooking {
+  implicit val format: Format[CancelBooking] = Json.format
+}
+
+object WithdrawBooking {
+  implicit val format: Format[WithdrawBooking] = Json.format
+}
+
+object RejectBooking {
+  implicit val format: Format[RejectBooking] = Json.format
+}
 
 
 /**
@@ -105,8 +127,13 @@ sealed trait BookingRegisterEvent extends AggregateEvent[BookingRegisterEvent] {
   override def aggregateTag: AggregateEventTagger[BookingRegisterEvent] = BookingRegisterEvent.Tag
 }
 
-case object RoomListed extends BookingRegisterEvent
-case object RoomUnlisted extends BookingRegisterEvent
+case object RoomListed extends BookingRegisterEvent {
+  implicit val format: Format[RoomListed.type] = singletonFormat(RoomListed)
+}
+
+case object RoomUnlisted extends BookingRegisterEvent {
+  implicit val format: Format[RoomUnlisted.type] = singletonFormat(RoomUnlisted)
+}
 
 case class BookingRequested(bookingId: UUID,
                             guest: UUID,
@@ -117,6 +144,11 @@ case class BookingRequested(bookingId: UUID,
 case class BookingCancelled(bookingId: UUID) extends BookingRegisterEvent
 case class BookingWithdrawn(bookingId: UUID) extends BookingRegisterEvent
 case class BookingRejected(bookingId: UUID) extends BookingRegisterEvent
+
+object BookingRequested {
+  implicit val format: Format[BookingRequested] = Json.format
+}
+
 
 object BookingRegisterEvent {
   val Tag = AggregateEventTag[BookingRegisterEvent]
