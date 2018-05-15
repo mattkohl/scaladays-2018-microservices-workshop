@@ -1,5 +1,6 @@
 package eu.reactivesystems.workshop.booking.impl
 
+import java.time.LocalDate
 import java.util.UUID
 
 import akka.Done
@@ -17,20 +18,38 @@ class BookingRegister extends PersistentEntity {
   override type Command = BookingRegisterCommand
   override type Event = BookingRegisterEvent
 
-  override def initialState: BookingRegisterState = BookingRegisterState(BookingRegisterStatus.NotCreated)
-
+  override def initialState: BookingRegisterState = BookingRegisterState(BookingRegisterStatus.Listed, Map.empty)
 
   override def behavior: Behavior = {
-    case BookingRegisterState(BookingRegisterStatus.NotCreated) => unlisted
+    case BookingRegisterState(BookingRegisterStatus.Unlisted, _) => unlisted
+    case BookingRegisterState(BookingRegisterStatus.Listed, _) => listed
   }
 
-  /**
-    * Behavior for the not created state.
-    */
-  private def unlisted = Actions().onCommand[ListRoom.type, Done] {
-    case (RequestBooking(bookingRequest), ctx, state) =>
-      ctx.thenPersist(RoomListed)(event => ctx.reply(Done))
-  }
+  private def unlisted = Actions()
+    .onCommand[ListRoom.type, Done] {
+        case (ListRoom, ctx, state) => ctx.thenPersist(RoomListed)(event => ctx.reply(Done))
+      }
+    .onEvent {
+      case (RoomListed, state) => BookingRegisterState(BookingRegisterStatus.Listed, Map.empty)
+    }
+
+  private def listed = Actions()
+    .onCommand[RequestBooking, UUID] {
+      case (RequestBooking(bookingRequest), ctx, state) =>
+        if (bookingRequest.startingDate isBefore LocalDate.now()) {
+          ctx.invalidCommand("Booking date must be in the future")
+          ctx.done
+        } else {
+          val bookingId: UUID = UUID.randomUUID()
+          val event = BookingRequested(bookingId, bookingRequest.guest, bookingRequest.startingDate, bookingRequest.duration, bookingRequest.numberOfGuests)
+          ctx.thenPersist(event)(event => ctx.reply(event.bookingId))
+        }
+    }
+    .onEvent {
+      case (event @ BookingRequested(bookingId, guestId, startingDate, duration, numberOfGuests), state) =>
+        state.copy(requestedBookings =
+        state.requestedBookings + (event.bookingId.toString -> Booking(event.bookingId, event.guest, event.startingDate, event.duration, event.numberOfGuests)))
+    }
 
 }
 
@@ -38,10 +57,20 @@ class BookingRegister extends PersistentEntity {
 /**
   * The state.
   */
-case class BookingRegisterState(status: BookingRegisterStatus.Status)
+case class BookingRegisterState(status: BookingRegisterStatus.Status, requestedBookings: Map[String, Booking])
 
 object BookingRegisterState {
   implicit val format: Format[BookingRegisterState] = Json.format
+}
+
+case class Booking(bookingId: UUID,
+                   guest: UUID,
+                   startingDate: LocalDate,
+                   duration: Int,
+                   numberOfGuests: Int)
+
+object Booking {
+  implicit val format: Format[Booking] = Json.format
 }
 
 /**
@@ -49,7 +78,7 @@ object BookingRegisterState {
   */
 object BookingRegisterStatus extends Enumeration {
   type Status = Value
-  val NotCreated = Value
+  val Unlisted, Listed = Value
 
   implicit val format: Format[Status] = enumFormat(BookingRegisterStatus)
 }
@@ -77,6 +106,17 @@ sealed trait BookingRegisterEvent extends AggregateEvent[BookingRegisterEvent] {
 }
 
 case object RoomListed extends BookingRegisterEvent
+case object RoomUnlisted extends BookingRegisterEvent
+
+case class BookingRequested(bookingId: UUID,
+                            guest: UUID,
+                            startingDate: LocalDate,
+                            duration: Int,
+                            numberOfGuests: Int) extends BookingRegisterEvent
+
+case class BookingCancelled(bookingId: UUID) extends BookingRegisterEvent
+case class BookingWithdrawn(bookingId: UUID) extends BookingRegisterEvent
+case class BookingRejected(bookingId: UUID) extends BookingRegisterEvent
 
 object BookingRegisterEvent {
   val Tag = AggregateEventTag[BookingRegisterEvent]
